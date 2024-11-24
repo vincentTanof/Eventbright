@@ -114,4 +114,4 @@ async function loginUser(req: Request, res: Response, next: NextFunction) {
 
 
 
-export { registerUser, loginUser};
+export { registerUser, loginUser };

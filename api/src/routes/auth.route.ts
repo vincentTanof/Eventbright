@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { loginUser, registerUser } from "../controllers/auth.controller";
+import { registerUser, loginUser } from "../controllers/auth.controller";
 
 console.log("loginUser:", loginUser); // This will log the function or 'undefined'
 console.log("registerUser:", registerUser); // This will log the function or 'undefined'
