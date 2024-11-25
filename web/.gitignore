@@ -39,5 +39,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# zip file
-*.zip
+# # zip file
+# *.zip
