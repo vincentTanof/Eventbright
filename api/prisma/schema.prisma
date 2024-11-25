@@ -114,7 +114,7 @@ model User {
   email String @unique
   phone_number String? @unique
   password String
-  referral_code String?
+  referral_code String? @unique
   role_id Int @default(1)
   total_point Decimal @db.Decimal(10, 0)
   createdAt DateTime @default(now())

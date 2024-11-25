@@ -3,4 +3,5 @@ export default interface IRegister {
   email: string;
   password: string;
   phone: string;
+  referral_code: string;
 }

@@ -1,19 +1,25 @@
 "use client";
-import { Formik, Form, FormikProps } from "formik";
+import { Formik, Form, Field, FormikProps } from "formik";
 import Swal from "sweetalert2";
 import axiosInstance from "@/lib/axios";
-import IRegister from "../types";
-import Schema from "./schema";
-import ErrorHandler from "@/utils/error-handler";
-
+import * as Yup from "yup";
 import { useRouter } from "next/navigation";
+import IRegister from "../types";
+
+const Schema = Yup.object().shape({
+  fullname: Yup.string().required("Full name is required"),
+  email: Yup.string().email("Invalid email").required("Email is required"),
+  password: Yup.string().min(6, "Password must be at least 6 characters").required("Password is required"),
+  phone: Yup.string().required("Phone number is required"),
+  referral_code: Yup.string().optional(),
+});
 
 export default function RegisterForm() {
   const router = useRouter();
 
   const register = async (params: IRegister) => {
     try {
-      console.log("Register function called with params:", params); // Debugging log
+      console.log("Register function called with params:", params);
       const { data } = await axiosInstance.post("http://localhost:8080/auth/register", params);
       Swal.fire({
         icon: "success",
@@ -22,104 +28,109 @@ export default function RegisterForm() {
         timer: 2000,
       }).then(() => router.push("/"));
     } catch (err) {
-      console.error("Error occurred in register function:", err); // Added detailed logging
-      ErrorHandler(err);
+      console.error("Error occurred in register function:", err);
     }
   };
-  
+
   return (
     <div>
       <Formik
         initialValues={{
-          fullname: "", // Ensure fullname exists here
+          fullname: "",
           email: "",
           password: "",
           phone: "",
+          referral_code: "",
         }}
         validationSchema={Schema}
         onSubmit={(values) => {
+          console.log("Form submitted with values:", values);
           register(values);
         }}
       >
-        {(props: FormikProps<IRegister>) => {
-          const { values, errors, touched, handleChange } = props;
+        {(props: FormikProps<any>) => {
+          const { errors, touched } = props;
+
+          console.log("Validation errors:", errors); // Debug validation errors
+          console.log("Touched fields:", touched);   // Debug touched fields
+
           return (
             <Form>
+              {/* Full Name */}
               <div>
-                <label
-                  htmlFor="fullname"
-                  className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
-                >
-                  Full Name :
-                </label>
-                <input
-                  className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                <label htmlFor="fullname" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Full Name:</label>
+                <Field
                   type="text"
                   name="fullname"
-                  onChange={handleChange}
-                  value={values.fullname}
+                  className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
                 />
-                {touched.fullname && errors.fullname ? (
+                {typeof errors.fullname === "string" && (
                   <div className="text-red-600">{errors.fullname}</div>
-                ) : null}
+                )}
               </div>
+
+              {/* Email */}
               <div>
-                <label
-                  htmlFor="email"
-                  className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
-                >
-                  Email :
+                <label htmlFor="email" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+                  Email:
                 </label>
-                <input
-                  className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                  type="text"
+                <Field
+                  type="email"
                   name="email"
-                  onChange={handleChange}
-                  value={values.email}
+                  className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
                 />
-                {touched.email && errors.email ? (
+                {touched.email && typeof errors.email === "string" && (
                   <div className="text-red-600">{errors.email}</div>
-                ) : null}
-              </div>
+                )}
+            </div>
+
+
+              {/* Password */}
               <div>
-                <label
-                  htmlFor="password"
-                  className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
-                >
-                  Password :
+                <label htmlFor="password" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+                  Password:
                 </label>
-                <input
-                  className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                <Field
                   type="password"
                   name="password"
-                  onChange={handleChange}
-                  value={values.password}
+                  className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
                 />
-                {touched.password && errors.password ? (
+                {touched.password && typeof errors.password === "string" && (
                   <div className="text-red-600">{errors.password}</div>
-                ) : null}
-              </div>
+                )}
+            </div>
+
+
+              {/* Phone Number */}
               <div>
-                <label
-                  htmlFor="phone"
-                  className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
-                >
-                  Phone Number :
+                <label htmlFor="phone" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+                  Phone Number:
                 </label>
-                <input
-                  className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                <Field
                   type="text"
                   name="phone"
-                  onChange={handleChange}
-                  value={values.phone}
+                  className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
                 />
-                {touched.phone && errors.phone ? (
+                {touched.phone && typeof errors.phone === "string" && (
                   <div className="text-red-600">{errors.phone}</div>
-                ) : null}
+                )}
+            </div>
+
+
+              {/* Referral Code */}
+              <div>
+                <label htmlFor="referral_code">Referral Code (Optional):</label>
+                <Field
+                  type="text"
+                  name="referral_code"
+                  className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                />
               </div>
+
+              {/* Submit Button */}
               <button
-                className="mt-5 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded "
                 type="submit"
+                className="mt-5 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
               >
                 Register
               </button>
