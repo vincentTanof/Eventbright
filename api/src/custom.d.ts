@@ -1,8 +1,10 @@
-export type User = {
+export interface User {
+  id: number; // Ensure the id field is present
+  fullname: string;
   email: string;
-  name: string;
   role: string;
-};
+}
+
 
 declare global {
   namespace Express {

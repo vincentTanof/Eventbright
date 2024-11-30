@@ -1,4 +1,4 @@
-import axios, { AxiosInstance } from "axios";
+import axios from "axios";
 import { getCookie } from "cookies-next";
 
 const axiosInstance = axios.create({
@@ -9,15 +9,17 @@ const axiosInstance = axios.create({
 axiosInstance.interceptors.request.use(
   async (config) => {
     const token = getCookie("access_token");
+    console.log("Access token from cookies:", token); // Debugging
     if (token) {
       config.headers.Authorization = "Bearer " + token;
     }
-
     return config;
   },
   async (error) => {
     return Promise.reject(error);
   }
 );
+
+
 
 export default axiosInstance;

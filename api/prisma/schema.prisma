@@ -16,34 +16,38 @@ enum SaleType {
   free
 }
 
-// declare table
 model Events {
-  event_id Int @id @default(autoincrement()) // Event ID
-  event_name String // Event Name
-  event_description String? @db.Text // Event Description
-  start_date DateTime @db.DateTime // Event Start Date
-  end_date DateTime @db.DateTime // Event End Date
-  event_slug String // Event Slug
-  event_price Decimal? @db.Decimal(10, 0) // Event Price
-  discount_price Decimal? @db.Decimal(10, 0) // Event Discount
-  city_id Int? // City (For Offline)
-  location String? @db.VarChar(100) // Location (For Offline)
-  spot Int? // Total Seats Available
-  event_type_id Int? // Event Type -> Free / Paid
-  event_category_id Int? // Event Category -> 
-  created_by Int // Created by which EO
-  updated_by Int? // Updated by which EO
-  sale_type SaleType? // Free atau Paid
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  deletedAt DateTime? @db.DateTime
-  eventType Event_type? @relation(fields: [event_type_id], references: [id])
-  eventCategory Event_category? @relation(fields: [event_category_id], references: [id])
-  rating Event_reviews_ratings []
-  promotions Promotions[]
-  cities Cities? @relation(fields: [city_id], references: [id])
-  tickets Tickets[]
+  event_id          Int             @id @default(autoincrement()) // Event ID
+  event_name        String          // Event Name
+  event_description String?         @db.Text // Event Description
+  start_date        DateTime        @db.DateTime // Event Start Date
+  end_date          DateTime        @db.DateTime // Event End Date
+  event_slug        String?         // Event Slug (Optional)
+  event_price       Decimal?        @db.Decimal(10, 0) // Event Price
+  discount_price    Decimal?        @db.Decimal(10, 0) // Event Discount
+  city_id           Int?            // City (For Offline)
+  location          String?         @db.VarChar(100) // Location (For Offline)
+  spot              Int?            // Total Seats Available
+  event_type_id     Int?            // Event Type -> Free / Paid
+  event_category_id Int?            // Event Category
+  created_by        Int             // Created by which EO (linked to User)
+  updated_by        Int?            // Updated by which EO (linked to User)
+  sale_type         SaleType?       // Free or Paid
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  deletedAt         DateTime?       @db.DateTime
+
+  // Relationships
+  eventType         Event_type?     @relation(fields: [event_type_id], references: [id])
+  eventCategory     Event_category? @relation(fields: [event_category_id], references: [id])
+  rating            Event_reviews_ratings[]
+  promotions        Promotions[]
+  cities            Cities?         @relation(fields: [city_id], references: [id])
+  tickets           Tickets[]
+  organizer         User            @relation("EventOrganizer", fields: [created_by], references: [id])
+  updater           User?           @relation("EventUpdater", fields: [updated_by], references: [id])
 }
+
 
 model Event_category {
   id Int @id @default(autoincrement())
@@ -109,37 +113,65 @@ model Transactions {
 }
 
 model User {
-  id Int @id @default(autoincrement())
-  fullname String
-  email String @unique
-  phone_number String? @unique
-  password String
-  referral_code String? @unique
-  role_id Int @default(1)
-  total_point Decimal @db.Decimal(10, 0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  deletedAt DateTime? @db.DateTime
-  referral_code_user Referral_code_user[]
-  role Roles @relation(fields: [role_id], references: [id])
-  transactions Transactions[]
-  vouchers Vouchers[]
-  tickets Tickets[]
-  points Points[]
+  id                        Int              @id @default(autoincrement())
+  fullname                  String
+  email                     String           @unique
+  phone_number              String?          @unique
+  password                  String
+  referral_code             String?          @unique
+  role_id                   Int              @default(1) // Default to 'customer'
+  is_approved               Boolean?         @default(false) // Approval for event organizer
+  total_point               Decimal          @db.Decimal(10, 0)
+  createdAt                 DateTime         @default(now())
+  updatedAt                 DateTime         @updatedAt
+  deletedAt                 DateTime?        @db.DateTime
+  transactions              Transactions[]
+  vouchers                  Vouchers[]
+  tickets                   Tickets[]
+  points                    Points[]
+  role                      Roles            @relation(fields: [role_id], references: [id])
+  referralHistoryAsReferrer ReferralHistory[] @relation("Referrer")
+  referralHistoryAsReferred ReferralHistory[] @relation("ReferredUser")
+
+  // Relationships to Events
+  createdEvents             Events[]         @relation("EventOrganizer")
+  updatedEvents             Events[]         @relation("EventUpdater")
+
+  // Relationships to Organizer Requests
+  organizerRequests         OrganizerRequests[]
 }
 
+model OrganizerRequests {
+  id        Int      @id @default(autoincrement())
+  user_id   Int      // References the User making the request
+  name      String   // Name of the requester
+  reason    String   // Reason provided by the user
+  status    String   @default("pending") // Status: "pending", "approved", "declined"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relation to User
+  user User @relation(fields: [user_id], references: [id])
+}
+
+
+
 model Roles {
-  id Int @id @default(autoincrement())
-  name String @unique
+  id   Int    @id @default(autoincrement())
+  name String @unique // Examples: "customer", "event-organizer", "admin"
   user User[]
 }
 
-model Referral_code_user {
-  id Int @id @default(autoincrement())
-  master_user_id Int
-  user_id Int 
-  users User @relation(fields: [user_id], references: [id])
+
+model ReferralHistory {
+  id             Int      @id @default(autoincrement())
+  referrerId     Int      // Referrer's user ID
+  referredUserId Int      // Referred user's ID
+  createdAt      DateTime @default(now())
+  referrer       User     @relation("Referrer", fields: [referrerId], references: [id])
+  referredUser   User     @relation("ReferredUser", fields: [referredUserId], references: [id])
 }
+
 
 model Promotions {
   id Int @id @default(autoincrement())
@@ -211,3 +243,4 @@ model Tickets {
   users User @relation(fields: [user_id], references: [id])
   events Events @relation(fields: [event_id], references: [event_id])
 }
+

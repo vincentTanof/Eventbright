@@ -1,11 +1,12 @@
-// For sending mail for our nodemailer
 import nodemailer from "nodemailer";
-import { NODEMAILER_EMAIL, NODEMAILER_PASS } from "../utils/envConfig";
 
-export const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth:{
-        user: NODEMAILER_EMAIL,
-        pass: NODEMAILER_PASS,
-    },    
+// Nodemailer transporter configuration
+const transporter = nodemailer.createTransport({
+  service: "Gmail", // Your email service (Gmail, Outlook, etc.)
+  auth: {
+    user: process.env.EMAIL_USER, // Your email address
+    pass: process.env.EMAIL_PASS, // Your app-specific password
+  },
 });
+
+export default transporter;
