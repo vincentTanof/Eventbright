@@ -1,15 +1,9 @@
 import { Request, Response, NextFunction } from "express";
 import transporter from "../lib/mail";
 import { PrismaClient } from "@prisma/client";
-import { genSalt, hash, compare } from "bcrypt";
-import { sign } from "jsonwebtoken";
-
-import { SECRET_KEY, BASE_WEB_URL } from "../utils/envConfig";
-import { User } from "../custom";
-import path from "path";
-import handlebars from "handlebars";
-import fs from "fs";
 import bcrypt from "bcrypt";
+import { sign } from "jsonwebtoken";
+import { SECRET_KEY, BASE_WEB_URL } from "../utils/envConfig";
 
 const prisma = new PrismaClient();
 
@@ -39,9 +33,7 @@ async function registerUser(req: Request, res: Response, next: NextFunction) {
     };
 
     let newReferralCode = generateReferralCode();
-    while (
-      await prisma.user.findUnique({ where: { referral_code: newReferralCode } })
-    ) {
+    while (await prisma.user.findUnique({ where: { referral_code: newReferralCode } })) {
       newReferralCode = generateReferralCode();
     }
 
@@ -58,7 +50,7 @@ async function registerUser(req: Request, res: Response, next: NextFunction) {
       },
     });
 
-    // If a referral code is provided, validate and process it
+    // Handle referral logic
     if (referral_code) {
       const referrer = await prisma.user.findUnique({
         where: { referral_code },
@@ -68,23 +60,60 @@ async function registerUser(req: Request, res: Response, next: NextFunction) {
         return res.status(400).json({ error: "Invalid referral code!" });
       }
 
-      // Increment the referrer's points
+      const threeMonthsLater = new Date();
+      threeMonthsLater.setMonth(threeMonthsLater.getMonth() + 3);
+
+      // Increment referrer's points and add expiration logic
+      const pointsToAdd = 10000;
+
+      await prisma.points.create({
+        data: {
+          user_id: referrer.id,
+          point: pointsToAdd, // Add 10,000 points
+          expired_at: threeMonthsLater, // Expiration date
+        },
+      });
+
+      // Update the referrer's total_point field
       await prisma.user.update({
         where: { id: referrer.id },
         data: {
           total_point: {
-            increment: 10000, // Add 10,000 points to the referrer
+            increment: pointsToAdd,
           },
         },
       });
 
-      // Optional: Track referral history
-      await prisma.referralHistory.create({
-        data: {
-          referrerId: referrer.id,
-          referredUserId: newUser.id,
-        },
-      });
+      // Create a 10% discount voucher for the referred user
+      try {
+        await prisma.vouchers.create({
+          data: {
+            user_id: newUser.id,
+            voucher_code: `REF-${Math.random().toString(36).substr(2, 8).toUpperCase()}`,
+            type: "percentage",
+            category: "discount",
+            amount: 10, // 10% discount
+            status: true,
+            start_date: new Date(),
+            end_date: threeMonthsLater,
+            qty: 1, // Single-use voucher
+          },
+        });
+      } catch (error) {
+        console.error("Voucher creation failed:", error);
+      }
+
+      // Track referral history
+      try {
+        await prisma.referralHistory.create({
+          data: {
+            referrerId: referrer.id,
+            referredUserId: newUser.id,
+          },
+        });
+      } catch (error) {
+        console.error("Error tracking referral history:", error);
+      }
     }
 
     // Generate a verification token
@@ -128,11 +157,6 @@ async function registerUser(req: Request, res: Response, next: NextFunction) {
   }
 }
 
-
-
-
-
-
 async function loginUser(req: Request, res: Response, next: NextFunction) {
   try {
     const { email, password } = req.body;
@@ -145,7 +169,7 @@ async function loginUser(req: Request, res: Response, next: NextFunction) {
     // Find user in the database, include the role relation
     const user = await prisma.user.findUnique({
       where: { email },
-      include: { role: true }, // Include the role relation to access role.name
+      include: { role: true },
     });
 
     if (!user) {
@@ -164,12 +188,11 @@ async function loginUser(req: Request, res: Response, next: NextFunction) {
         id: user.id,
         fullname: user.fullname,
         email: user.email,
-        role: user.role.name, // This should be a string like "event-organizer"
+        role: user.role.name,
       },
       SECRET_KEY as string,
       { expiresIn: "1h" }
     );
-    
 
     // Respond with token and user info
     return res.status(200).json({
@@ -177,9 +200,10 @@ async function loginUser(req: Request, res: Response, next: NextFunction) {
       token,
       user: {
         id: user.id,
-        name: user.fullname, // Rename fullname to name
+        name: user.fullname,
         email: user.email,
-        role: user.role.name, // Send role name instead of role_id
+        role: user.role.name,
+        total_point: user.total_point,
       },
     });
   } catch (err) {
@@ -187,12 +211,9 @@ async function loginUser(req: Request, res: Response, next: NextFunction) {
 
     return res.status(500).json({
       error: "Internal server error",
-      details: (err as Error).message, // Type assertion
+      details: (err as Error).message,
     });
   }
 }
-
-
-
 
 export { registerUser, loginUser };

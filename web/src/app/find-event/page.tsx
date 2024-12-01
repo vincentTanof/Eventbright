@@ -1,9 +1,9 @@
 "use client";
 
-import axiosInstance from "@/lib/axios";
 import { useEffect, useState } from "react";
-import Swal from "sweetalert2";
+import axiosInstance from "@/lib/axios";
 import { useRouter } from "next/navigation";
+import useAuthStore from "@/stores/auth-store";
 
 interface Event {
   event_id: number;
@@ -13,84 +13,80 @@ interface Event {
   end_date: string;
   location: string;
   event_price: number;
+  spot: number;
   event_slug: string;
-  isOwner: boolean; // Indicates if the logged-in user created this event
 }
 
 export default function FindEventPage() {
-  const [events, setEvents] = useState<Event[]>([]);
+  const [events, setEvents] = useState<Event[]>([]); // Specify the type for events
+  const { user } = useAuthStore(); // Access the logged-in user
   const router = useRouter();
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+    }).format(amount);
+  };
 
+  // Fetch events from the backend
   useEffect(() => {
-    async function fetchEvents() {
+    const fetchEvents = async () => {
       try {
-        const { data } = await axiosInstance.get("/event/find");
-        setEvents(data.events);
+        const response = await axiosInstance.get("/event/list");
+        setEvents(response.data.events); // Ensure response matches the Event type
       } catch (error) {
         console.error("Error fetching events:", error);
       }
-    }
+    };
+
     fetchEvents();
   }, []);
 
-  const handleEdit = (eventId: number) => {
-    router.push(`/event/edit/${eventId}`);
-  };
-
-  const handleRemove = async (eventId: number) => {
-    try {
-      const confirm = await Swal.fire({
-        title: "Are you sure?",
-        text: "You won't be able to revert this!",
-        icon: "warning",
-        showCancelButton: true,
-        confirmButtonColor: "#3085d6",
-        cancelButtonColor: "#d33",
-        confirmButtonText: "Yes, delete it!",
-      });
-
-      if (confirm.isConfirmed) {
-        await axiosInstance.delete(`/event/${eventId}`);
-        Swal.fire("Deleted!", "Your event has been deleted.", "success");
-        setEvents(events.filter((event) => event.event_id !== eventId));
-      }
-    } catch (error) {
-      console.error("Error deleting event:", error);
-      Swal.fire("Error", "Failed to delete the event.", "error");
-    }
-  };
-
   return (
-    <div className="container mx-auto px-4">
+    <div className="container mx-auto px-4 py-4">
       <h1 className="text-2xl font-bold mb-4">Find Events</h1>
-      {events.map((event) => (
-        <div key={event.event_id} className="border p-4 rounded mb-4">
-          <h2 className="text-xl font-bold">{event.event_name}</h2>
-          <p>{event.event_description}</p>
-          <p>
-            {new Date(event.start_date).toLocaleString()} -{" "}
-            {new Date(event.end_date).toLocaleString()}
-          </p>
-          <p>Location: {event.location}</p>
-          <p>Price: ${event.event_price}</p>
-          {event.isOwner && (
-            <div className="flex gap-2 mt-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {events.map((event) => (
+          <div key={event.event_id} className="border p-4 rounded shadow">
+            <h2 className="text-xl font-bold">{event.event_name}</h2>
+            <p>{event.event_description}</p>
+            <p>
+              <strong>Date:</strong> {new Date(event.start_date).toLocaleString()} -{" "}
+              {new Date(event.end_date).toLocaleString()}
+            </p>
+            <p>
+              <strong>Location:</strong> {event.location}
+            </p>
+            <p>
+              <strong>Price:</strong> {formatCurrency(event.event_price)}
+            </p>
+            <p>
+              <strong>Available Slots:</strong> {event.spot}
+            </p>
+
+            {/* Show appropriate buttons */}
+            {user && event.spot > 0 && (
               <button
-                className="bg-blue-500 text-white px-4 py-2 rounded"
-                onClick={() => handleEdit(event.event_id)}
+                className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+                onClick={() => router.push(`/event/${event.event_id}`)} // Redirect to event detail page
               >
-                Edit
+                Buy Ticket
               </button>
+            )}
+            {event.spot === 0 && (
+              <p className="text-red-500 font-bold">Sold Out</p>
+            )}
+            {!user && (
               <button
-                className="bg-red-500 text-white px-4 py-2 rounded"
-                onClick={() => handleRemove(event.event_id)}
+                className="bg-gray-400 text-white font-bold py-2 px-4 rounded"
+                onClick={() => router.push("/login")} // Redirect to login page if not logged in
               >
-                Remove
+                Login to Buy
               </button>
-            </div>
-          )}
-        </div>
-      ))}
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

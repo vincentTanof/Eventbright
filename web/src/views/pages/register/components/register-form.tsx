@@ -5,6 +5,8 @@ import axiosInstance from "@/lib/axios";
 import * as Yup from "yup";
 import { useRouter } from "next/navigation";
 import IRegister from "../types";
+import axios from "axios";
+
 
 const Schema = Yup.object().shape({
   fullname: Yup.string().required("Full name is required"),
@@ -28,9 +30,29 @@ export default function RegisterForm() {
         timer: 2000,
       }).then(() => router.push("/"));
     } catch (err) {
-      console.error("Error occurred in register function:", err);
+      // Ensure the error is of type AxiosError
+      if (axios.isAxiosError(err)) {
+        console.error("Error occurred in register function:", err.response?.data);
+  
+        Swal.fire({
+          icon: "error",
+          title: "Registration Failed",
+          text: err.response?.data?.error || "An error occurred.", // Use error message from the server if available
+        });
+      } else {
+        console.error("Unexpected error:", err);
+  
+        Swal.fire({
+          icon: "error",
+          title: "Registration Failed",
+          text: "An unexpected error occurred.", // Default message for non-Axios errors
+        });
+      }
     }
   };
+  
+  
+  
 
   return (
     <div>

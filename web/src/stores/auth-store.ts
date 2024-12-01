@@ -1,11 +1,14 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { deleteCookie } from "cookies-next";
+import Swal from "sweetalert2";
 
 export interface IUser {
+  id: number;
   name: string;
   email: string;
-  role: string; // Ensure role is correctly set
+  role: string;
+  total_point: number; // Add this property
 }
 
 interface IAuthStore {
@@ -26,6 +29,13 @@ const useAuthStore = create<IAuthStore>()(
         console.log("Clearing auth"); // Debug log
         set(() => ({ user: null }));
         deleteCookie("access_token"); // Delete token on logout
+        Swal.fire({
+          icon: "success",
+          title: "Logout successful",
+          text: "You have been logged out successfully.",
+          timer: 2000,
+          showConfirmButton: false,
+        });
       },
     }),
     {

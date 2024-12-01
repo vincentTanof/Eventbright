@@ -27,10 +27,13 @@ export default function LoginForm() {
 
       // Update user state
       const user: IUser = {
+        id: data.user.id, // Add this line
         name: data.user.name,
         email: data.user.email,
         role: data.user.role,
+        total_point: data.user.total_point, // Add this line
       };
+      
 
       onAuthSuccess(user); // Update auth-store state with user
 

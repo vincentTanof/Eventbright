@@ -75,9 +75,6 @@ export async function createEvent(req: Request, res: Response, next: NextFunctio
   
   export async function findAllEvents(req: Request, res: Response) {
     try {
-      const userId = req.user?.id; // Assuming the middleware sets `req.user` for the logged-in user.
-  
-      // Fetch all events
       const events = await prisma.events.findMany({
         select: {
           event_id: true,
@@ -88,22 +85,18 @@ export async function createEvent(req: Request, res: Response, next: NextFunctio
           location: true,
           event_price: true,
           event_slug: true,
-          created_by: true, // Include creator ID to check ownership
+          spot: true, // Include available slots
+          created_by: true,
         },
       });
   
-      // Add an `isOwner` field to indicate if the logged-in user is the creator
-      const eventsWithOwnership = events.map((event) => ({
-        ...event,
-        isOwner: userId ? event.created_by === userId : false,
-      }));
-  
-      return res.status(200).json({ events: eventsWithOwnership });
+      return res.status(200).json({ events });
     } catch (error) {
       console.error("Error fetching events:", error);
       return res.status(500).json({ error: "Internal server error" });
     }
   }
+  
   
   export async function deleteEvent(req: Request, res: Response) {
     try {
@@ -132,4 +125,105 @@ export async function createEvent(req: Request, res: Response, next: NextFunctio
       return res.status(500).json({ error: "Internal server error" });
     }
   }
+  
+  // Add this in your event.controller.ts
+
+  export async function findEventById(req: Request, res: Response) {
+    try {
+      const { eventId } = req.params;
+  
+      // Fetch the event details
+      const event = await prisma.events.findUnique({
+        where: { event_id: Number(eventId) },
+      });
+  
+      if (!event) {
+        return res.status(404).json({ error: "Event not found" });
+      }
+  
+      return res.status(200).json({ event });
+    } catch (error) {
+      console.error("Error fetching event details:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  }
+  
+  export const updateEvent = async (req: Request, res: Response) => {
+    try {
+      const organizerId = req.user?.id;
+      const eventId = parseInt(req.params.eventId, 10);
+  
+      const { event_name, start_date, end_date, spot } = req.body;
+  
+      const event = await prisma.events.findUnique({
+        where: { event_id: eventId },
+      });
+  
+      if (!event || event.created_by !== organizerId) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+  
+      const updatedEvent = await prisma.events.update({
+        where: { event_id: eventId },
+        data: { event_name, start_date, end_date, spot },
+      });
+  
+      return res.status(200).json({ event: updatedEvent });
+    } catch (error) {
+      console.error("Error updating event:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  };
+  
+  export const getOrganizerEvents = async (req: Request, res: Response) => {
+    try {
+      const organizerId = req.user?.id;
+  
+      // Fetch events created by the logged-in organizer
+      const events = await prisma.events.findMany({
+        where: { created_by: organizerId },
+      });
+  
+      res.status(200).json({ events });
+    } catch (error) {
+      console.error("Error fetching organizer events:", error);
+      res.status(500).json({ error: "Failed to fetch organizer events" });
+    }
+  };
+
+  export const findEventAttendees = async (req: Request, res: Response) => {
+    try {
+      const eventId = parseInt(req.params.eventId, 10);
+  
+      const attendees = await prisma.tickets.findMany({
+        where: { event_id: eventId },
+        include: { users: true },
+      });
+  
+      return res.status(200).json({ attendees });
+    } catch (error) {
+      console.error("Error fetching attendees:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  };
+  
+  export const findEventTransactions = async (req: Request, res: Response) => {
+    try {
+      const eventId = parseInt(req.params.eventId, 10);
+  
+      const transactions = await prisma.transactions.findMany({
+        where: { event_id: eventId },
+        include: {
+          user: true, // Include user details
+          payment_method: true, // Include payment method
+          voucher: true, // Include voucher details
+        },
+      });
+  
+      return res.status(200).json({ transactions });
+    } catch (error) {
+      console.error("Error fetching transactions:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  };
   
