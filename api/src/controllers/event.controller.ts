@@ -155,6 +155,7 @@ export async function createEvent(req: Request, res: Response, next: NextFunctio
   
       const { event_name, start_date, end_date, spot } = req.body;
   
+      // Check if the event exists and is owned by the organizer
       const event = await prisma.events.findUnique({
         where: { event_id: eventId },
       });
@@ -163,9 +164,16 @@ export async function createEvent(req: Request, res: Response, next: NextFunctio
         return res.status(403).json({ error: "Forbidden" });
       }
   
+      // Construct the update data object dynamically, keeping existing values if not provided
+      const updateData: any = {};
+      if (event_name) updateData.event_name = event_name;
+      if (start_date) updateData.start_date = new Date(start_date);
+      if (end_date) updateData.end_date = new Date(end_date);
+      if (spot) updateData.spot = spot;
+  
       const updatedEvent = await prisma.events.update({
         where: { event_id: eventId },
-        data: { event_name, start_date, end_date, spot },
+        data: updateData,
       });
   
       return res.status(200).json({ event: updatedEvent });
@@ -174,6 +182,7 @@ export async function createEvent(req: Request, res: Response, next: NextFunctio
       return res.status(500).json({ error: "Internal server error" });
     }
   };
+  
   
   export const getOrganizerEvents = async (req: Request, res: Response) => {
     try {
@@ -195,17 +204,60 @@ export async function createEvent(req: Request, res: Response, next: NextFunctio
     try {
       const eventId = parseInt(req.params.eventId, 10);
   
-      const attendees = await prisma.tickets.findMany({
+      // Fetch transactions with user details
+      const transactions = await prisma.transactions.findMany({
         where: { event_id: eventId },
-        include: { users: true },
+        select: {
+          id: true,
+          total_amount: true,
+          point_used: true,
+          status: true,
+          payment_method: {
+            select: {
+              name: true,
+            },
+          },
+          user: {
+            select: {
+              fullname: true,
+              email: true,
+            },
+          },
+          voucher: { // Include the voucher details
+            select: {
+              voucher_code: true,
+              status: true,
+            },
+          },
+        },
       });
+      
   
-      return res.status(200).json({ attendees });
+      console.log("Fetched Transactions:", transactions);
+  
+      // Check if the transactions have user data
+      if (!transactions || transactions.length === 0) {
+        return res.status(200).json({ attendees: [] });
+      }
+  
+      // Extract attendee names
+      const attendeeList = transactions
+        .filter((transaction) => transaction.user) // Ensure user data exists
+        .map((transaction) => transaction.user.fullname);
+  
+      console.log("Attendee List:", attendeeList);
+  
+      return res.status(200).json({ attendees: attendeeList });
     } catch (error) {
       console.error("Error fetching attendees:", error);
       return res.status(500).json({ error: "Internal server error" });
     }
   };
+  
+
+  
+  
+  
   
   export const findEventTransactions = async (req: Request, res: Response) => {
     try {
@@ -216,7 +268,7 @@ export async function createEvent(req: Request, res: Response, next: NextFunctio
         include: {
           user: true, // Include user details
           payment_method: true, // Include payment method
-          voucher: true, // Include voucher details
+          voucher: true, // Optionally include voucher details
         },
       });
   
@@ -226,4 +278,62 @@ export async function createEvent(req: Request, res: Response, next: NextFunctio
       return res.status(500).json({ error: "Internal server error" });
     }
   };
+  
+  export const getEventStatistics = async (req: Request, res: Response) => {
+    try {
+      const organizerId = req.user?.id;
+  
+      if (req.user?.role !== "event-organizer") {
+        return res
+          .status(403)
+          .json({ error: "Only Event Organizers can view statistics!" });
+      }
+  
+      console.log("Fetching statistics for organizer ID:", organizerId);
+  
+      const events = await prisma.events.findMany({
+        where: {
+          created_by: organizerId,
+        },
+        select: {
+          event_name: true,
+          start_date: true,
+          tickets_sold: true,
+          event_price: true,
+        },
+      });
+  
+      console.log("Fetched events:", events);
+  
+      const formattedStatistics = events.map((event) => {
+        const year = new Date(event.start_date).getFullYear().toString();
+        const month = new Date(event.start_date).toLocaleString("default", {
+          month: "long",
+        });
+        const day = new Date(event.start_date).toISOString().split("T")[0];
+        const total_earning =
+          (event.tickets_sold ?? 0) * Number(event.event_price ?? 0);
+  
+        return {
+          year,
+          month,
+          day,
+          total_earning,
+        };
+      });
+  
+      return res.status(200).json({ statistics: formattedStatistics });
+    } catch (error) {
+      console.error("Error fetching event statistics:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  };
+  
+  
+  
+  
+  
+
+  
+  
   

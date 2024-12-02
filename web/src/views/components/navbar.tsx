@@ -84,17 +84,31 @@ export default function Navbar() {
 
         {user && user.role === "event-organizer" && (
           <>
-            <button className="hover:underline" onClick={() => router.push("/event/create")}>
+            <button
+              className="hover:underline"
+              onClick={() => router.push("/event/create")}
+            >
               Create Event
             </button>
-
             {hasEvents && (
-              <button className="hover:underline" onClick={() => router.push("/dashboard/my-events")}>
-                My Event
-              </button>
+              <>
+                <button
+                  className="hover:underline"
+                  onClick={() => router.push("/dashboard/my-events")}
+                >
+                  My Events
+                </button>
+                <button
+                  className="hover:underline"
+                  onClick={() => router.push("/dashboard/statistics")}
+                >
+                  Event Statistics
+                </button>
+              </>
             )}
           </>
         )}
+
       </div>
 
       <div className="flex gap-2">

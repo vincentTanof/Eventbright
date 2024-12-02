@@ -6,103 +6,128 @@ import axiosInstance from "@/lib/axios";
 import Swal from "sweetalert2";
 
 export default function EditEventPage() {
-  const { eventId } = useParams();
   const router = useRouter();
-  const [eventDetails, setEventDetails] = useState({
+  const { eventId } = useParams() as { eventId: string }; // Access dynamic route parameter
+  const [event, setEvent] = useState({
     event_name: "",
     start_date: "",
     end_date: "",
+    location: "",
     spot: 0,
   });
+  const [loading, setLoading] = useState(true);
 
+  // Fetch event details on mount
   useEffect(() => {
     const fetchEventDetails = async () => {
       try {
-        const response = await axiosInstance.get(`/event/${eventId}`);
-        setEventDetails(response.data.event || {});
-      } catch (error) {
-        console.error("Error fetching event details:", error);
-        Swal.fire({
-          icon: "error",
-          title: "Error",
-          text: "Unable to fetch event details.",
+        const { data } = await axiosInstance.get(`/event/${eventId}`);
+        setEvent({
+          event_name: data.event.event_name,
+          start_date: data.event.start_date ? data.event.start_date.substring(0, 16) : "",
+          end_date: data.event.end_date ? data.event.end_date.substring(0, 16) : "",
+          location: data.event.location || "",
+          spot: data.event.spot || 0,
         });
+      } catch (error) {
+        Swal.fire("Error", "Failed to load event details", "error");
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchEventDetails();
   }, [eventId]);
 
+  // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await axiosInstance.put(`/event/${eventId}`, eventDetails);
-      Swal.fire({
-        icon: "success",
-        title: "Success",
-        text: "Event updated successfully.",
-      }).then(() => router.push("/dashboard/my-events"));
+      const filteredEvent = {
+        event_name: event.event_name || undefined,
+        start_date: event.start_date || undefined,
+        end_date: event.end_date || undefined,
+        location: event.location || undefined,
+        spot: event.spot || undefined,
+      };
+      await axiosInstance.put(`/event/${eventId}`, filteredEvent);
+      Swal.fire("Success", "Event updated successfully", "success");
+      router.push("/dashboard/my-events"); // Redirect back to events list
     } catch (error) {
-      console.error("Error updating event:", error);
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: "Unable to update event.",
-      });
+      Swal.fire("Error", "Failed to update event", "error");
     }
   };
 
+  // Handle input changes
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setEvent((prev) => ({
+      ...prev,
+      [name]: name === "spot" ? parseInt(value, 10) : value, // Parse spot as an integer
+    }));
+  };
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
   return (
-    <div className="p-8">
+    <div className="p-4">
       <h1 className="text-2xl font-bold mb-4">Edit Event</h1>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium">Event Name</label>
+      <form onSubmit={handleSubmit}>
+        <div className="mb-4">
+          <label className="block font-bold mb-2">Event Name</label>
           <input
             type="text"
-            value={eventDetails.event_name}
-            onChange={(e) =>
-              setEventDetails({ ...eventDetails, event_name: e.target.value })
-            }
-            className="block w-full p-2 border border-gray-300 rounded"
+            name="event_name"
+            value={event.event_name}
+            onChange={handleChange}
+            className="w-full p-2 border border-gray-300 rounded"
           />
         </div>
-        <div>
-          <label className="block text-sm font-medium">Start Date</label>
+        <div className="mb-4">
+          <label className="block font-bold mb-2">Start Date</label>
           <input
-            type="date"
-            value={eventDetails.start_date}
-            onChange={(e) =>
-              setEventDetails({ ...eventDetails, start_date: e.target.value })
-            }
-            className="block w-full p-2 border border-gray-300 rounded"
+            type="datetime-local"
+            name="start_date"
+            value={event.start_date}
+            onChange={handleChange}
+            className="w-full p-2 border border-gray-300 rounded"
           />
         </div>
-        <div>
-          <label className="block text-sm font-medium">End Date</label>
+        <div className="mb-4">
+          <label className="block font-bold mb-2">End Date</label>
           <input
-            type="date"
-            value={eventDetails.end_date}
-            onChange={(e) =>
-              setEventDetails({ ...eventDetails, end_date: e.target.value })
-            }
-            className="block w-full p-2 border border-gray-300 rounded"
+            type="datetime-local"
+            name="end_date"
+            value={event.end_date}
+            onChange={handleChange}
+            className="w-full p-2 border border-gray-300 rounded"
           />
         </div>
-        <div>
-          <label className="block text-sm font-medium">Available Spots</label>
+        <div className="mb-4">
+          <label className="block font-bold mb-2">Location</label>
+          <input
+            type="text"
+            name="location"
+            value={event.location}
+            onChange={handleChange}
+            className="w-full p-2 border border-gray-300 rounded"
+          />
+        </div>
+        <div className="mb-4">
+          <label className="block font-bold mb-2">Available Slots</label>
           <input
             type="number"
-            value={eventDetails.spot}
-            onChange={(e) =>
-              setEventDetails({ ...eventDetails, spot: Number(e.target.value) })
-            }
-            className="block w-full p-2 border border-gray-300 rounded"
+            name="spot"
+            value={event.spot}
+            onChange={handleChange}
+            className="w-full p-2 border border-gray-300 rounded"
           />
         </div>
         <button
           type="submit"
-          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-700"
         >
           Save Changes
         </button>

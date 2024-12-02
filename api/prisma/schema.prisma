@@ -18,20 +18,21 @@ enum SaleType {
 
 model Events {
   event_id          Int       @id @default(autoincrement()) // Event ID
-  event_name        String // Event Name
+  event_name        String    // Event Name
   event_description String?   @db.Text // Event Description
   start_date        DateTime  @db.DateTime // Event Start Date
   end_date          DateTime  @db.DateTime // Event End Date
-  event_slug        String? // Event Slug (Optional)
+  event_slug        String?   // Event Slug (Optional)
   event_price       Decimal?  @db.Decimal(10, 0) // Event Price
   discount_price    Decimal?  @db.Decimal(10, 0) // Event Discount
-  city_id           Int? // City (For Offline)
+  city_id           Int?      // City (For Offline)
   location          String?   @db.VarChar(100) // Location (For Offline)
-  spot              Int? // Total Seats Available
-  event_type_id     Int? // Event Type -> Free / Paid
-  event_category_id Int? // Event Category
-  created_by        Int // Created by which EO (linked to User)
-  updated_by        Int? // Updated by which EO (linked to User)
+  spot              Int?      // Total Seats Available
+  tickets_sold      Int       @default(0) // Total Tickets Sold
+  event_type_id     Int?      // Event Type -> Free / Paid
+  event_category_id Int?      // Event Category
+  created_by        Int       // Created by which EO (linked to User)
+  updated_by        Int?      // Updated by which EO (linked to User)
   sale_type         SaleType? // Free or Paid
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
@@ -50,6 +51,7 @@ model Events {
   // Newly Added Reverse Relationship
   transactions Transactions[] // Link to transactions
 }
+
 
 model Event_category {
   id     Int      @id @default(autoincrement())

@@ -185,14 +185,15 @@ async function loginUser(req: Request, res: Response, next: NextFunction) {
     // Generate JWT token
     const token = sign(
       {
-        id: user.id,
-        fullname: user.fullname,
-        email: user.email,
-        role: user.role.name,
+          id: user.id,
+          fullname: user.fullname,
+          email: user.email,
+          role: user.role.name,
       },
       SECRET_KEY as string,
-      { expiresIn: "1h" }
-    );
+      { expiresIn: "24h" } // Increase to 24 hours or a longer duration
+  );
+  
 
     // Respond with token and user info
     return res.status(200).json({

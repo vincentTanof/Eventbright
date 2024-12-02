@@ -9,6 +9,7 @@ import {
   getOrganizerEvents, // Import the new controller for fetching organizer's events
   findEventAttendees,
   findEventTransactions,
+  getEventStatistics
 } from "../controllers/event.controller";
 
 const router = Router();
@@ -29,16 +30,14 @@ router.delete("/:eventId", VerifyToken as any, deleteEvent as any);
 router.put("/:eventId", VerifyToken as any, RoleGuard(["event-organizer"]) as any, updateEvent as any);
 
 // Route to fetch events created by an organizer
-router.get(
-  "/organizer/events",
-  VerifyToken as any,
-  RoleGuard(["event-organizer"]) as any,
-  getOrganizerEvents as any
-);
+router.get("/organizer/events", VerifyToken as any, RoleGuard(["event-organizer"]) as any, getOrganizerEvents as any);
 
 // New Routes
 router.get("/:eventId/attendees", VerifyToken as any, RoleGuard(["event-organizer"]) as any, findEventAttendees as any);
   
 router.get("/:eventId/transactions", VerifyToken as any, RoleGuard(["event-organizer"]) as any, findEventTransactions as any);
-  
+
+// New statistics route
+router.get("/organizer/statistics", VerifyToken as any, RoleGuard(["event-organizer"]) as any, getEventStatistics as any);
+
 export default router;
